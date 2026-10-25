@@ -21,7 +21,7 @@ jobs:
               mv MobileHost/.* . 2>/dev/null || true
               rm -rf MobileHost
             fi
-            ls -la  # 打印一下根目录，方便看文件在不在
+            ls -la
           else
             echo "错误：未在仓库根目录找到 MobileHost.zip 文件！"
             exit 1
@@ -43,15 +43,22 @@ jobs:
           rm -rf android
           flutter create . --platforms=android
 
-      - name: Force Upgrade Android CompileSdkVersion
+      - name: Force Global Upgrade Android SDK 36
         run: |
-          # 兼容不同 Flutter 版本生成的 build.gradle 路径和格式
-          if [ -f "android/app/build.gradle" ]; then
-            sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle || true
-            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' android/app/build.gradle || true
-            sed -i 's/compileSdk .*/compileSdk 36/g' android/build.gradle || true
-            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' android/build.gradle || true
-          fi
+          # 核心大招：在安卓根目录构建脚本末尾，强行注入全局拦截器，强制所有插件和应用统一使用 SDK 36 编译
+          cat << 'EOF' >> android/build.gradle
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdk = 36
+                      }
+                  }
+              }
+          }
+          EOF
+          cat android/build.gradle # 打印确认注入成功
 
       - name: Disable Strict Analyze Warning
         run: |
