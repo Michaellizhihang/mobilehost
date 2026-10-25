@@ -1,0 +1,55 @@
+name: Build Android APK From Zip
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Unzip Project Code
+        run: |
+          if [ -f "MobileHost.zip" ]; then
+            unzip -o MobileHost.zip
+          else
+            echo "错误：未在仓库根目录找到 MobileHost.zip 文件！"
+            exit 1
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Create Clean Android Template
+        run: |
+          rm -rf android
+          flutter create . --platforms=android
+
+      - name: Disable Strict Analyze Warning
+        run: |
+          echo -e "analyzer:\n  errors:\n    unused_import: ignore\n    unused_field: ignore" > analysis_options.yaml
+
+      - name: Resolve Dependencies
+        run: |
+          flutter pub get
+
+      - name: Build Release APK
+        run: |
+          flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobilehost-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
