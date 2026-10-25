@@ -15,6 +15,13 @@ jobs:
         run: |
           if [ -f "MobileHost.zip" ]; then
             unzip -o MobileHost.zip
+            # 智能纠错：如果解压出来发现有一个同名嵌套文件夹，把里面的所有东西提到根目录来
+            if [ -d "MobileHost" ]; then
+              mv MobileHost/* . 2>/dev/null || true
+              mv MobileHost/.* . 2>/dev/null || true
+              rm -rf MobileHost
+            fi
+            ls -la  # 打印一下根目录，方便看文件在不在
           else
             echo "错误：未在仓库根目录找到 MobileHost.zip 文件！"
             exit 1
@@ -38,8 +45,13 @@ jobs:
 
       - name: Force Upgrade Android CompileSdkVersion
         run: |
-          sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' android/app/build.gradle
+          # 兼容不同 Flutter 版本生成的 build.gradle 路径和格式
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle || true
+            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' android/app/build.gradle || true
+            sed -i 's/compileSdk .*/compileSdk 36/g' android/build.gradle || true
+            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' android/build.gradle || true
+          fi
 
       - name: Disable Strict Analyze Warning
         run: |
